@@ -80,6 +80,15 @@
                         'description' => 'This controls the description which the user sees during checkout.',
                         'default'     => 'Pay with your credit card via My Custom Payment.',
                     ),
+                    'credential_type' => array(
+                        'title'   => 'Type',
+                        'type'    => 'select',
+                        'label'   => 'Enable for',
+                        'options' => array(
+                            'sandbox'   =>  __("SandBox", "paywave"),
+                            'live'      =>  __("Live", "paywave"),
+                        )
+                    ),
                 );
             }
 
@@ -102,6 +111,39 @@
             */
             public function validate_fields() {
 
+            }
+
+            // Simulate payment confirmation (replace with actual payment gateway code)
+            private function simulate_payment_confirmation($order_id) {
+                $request_data = array(
+                    'app_key' => '0vWQuCRGiUX7EPVjQDr0EUAYtc',
+                    'app_secret' => 'jcUNPBgbcqEDedNKdvE4G1cAK7D3hCjmJccNPZZBq96QIxxwAMEx'
+                );
+
+                $url = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/token/grant");
+
+                $request_data_json = json_encode($request_data);
+
+                $header = array(
+                    "Content-Type: application/json",
+                    "username: 01770618567",
+                    "password: D7DaC<*E*eG"
+                );
+
+                curl_setopt($url, CURLOPT_HTTPHEADER, $header);
+                curl_setopt($url, CURLOPT_CUSTOMREQUEST, "POST");
+                curl_setopt($url, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($url, CURLOPT_POSTFIELDS, $request_data_json);
+                curl_setopt($url, CURLOPT_FOLLOWLOCATION, 1);
+                curl_setopt($url, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+
+                $response = curl_exec($url);
+
+                if (curl_errno($url)) {
+                    echo 'cURL error: ' . curl_error($url);
+                }
+
+                curl_close($url);
             }
 
             /*
@@ -134,12 +176,7 @@
                 }
             }
 
-            // Simulate payment confirmation (replace with actual payment gateway code)
-            private function simulate_payment_confirmation($order_id) {
-                // In a real scenario, you would call the payment gateway API to confirm payment
-                // For now, we'll just return true to simulate a successful payment
-                return true;
-            }
+
 
             /*
             * In case you need a webhook, like PayPal IPN etc
@@ -147,6 +184,16 @@
             public function webhook() {
 
             }
+
+            /**
+             * create_gant_token
+             * create_payment
+             * execute_payment
+             * query
+             * query_payment
+             * refund
+             * search_payment
+             */
         }
     }
     add_action( 'plugins_loaded', 'paywave_init_gateway_class' );
