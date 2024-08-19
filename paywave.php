@@ -1,199 +1,248 @@
 <?php
-    /**
-     *    Plugin Name:       PayWave
-     *    Plugin URI:        https://paywave.com
-     *    Description:       PayWave is a versatile plugin designed to integrate all Bangladeshi payment gateways seamlessly. It simplifies online transactions by offering a unified platform for various payment methods, ensuring secure and efficient processing. Ideal for businesses, PayWave supports popular gateways like bKash, Nagad, Rocket, and more, enhancing the e-commerce experience.
-     *    Version:           1.0
-     *    Requires at least: 6.6
-     *    Requires PHP:      7.4
-     *    Author:            S. Saif
-     *    Author URI:        https://saif.im
-     *    License:           GPL v2 or later
-     *    License URI:       https://www.gnu.org/licenses/gpl-2.0.html
-     *    Update URI:
-     *    Text Domain:       paywave
-     *    Domain Path:       /languages
-     */
-    // Exit if accessed directly
-    if (!defined('ABSPATH')) {
-        exit;
-    }
+/**
+ * Plugin Name:       PayWave
+ * Plugin URI:        https://paywave.com
+ * Description:       PayWave is a versatile plugin designed to integrate all Bangladeshi payment gateways seamlessly. It simplifies online transactions by offering a unified platform for various payment methods, ensuring secure and efficient processing. Ideal for businesses, PayWave supports popular gateways like bKash, Nagad, Rocket, and more, enhancing the e-commerce experience.
+ * Version:           1.0
+ * Requires at least: 6.6
+ * Requires PHP:      7.4
+ * Author:            S. Saif
+ * Author URI:        https://saif.im
+ * License:           GPL v2 or later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:       paywave
+ * Domain Path:       /languages
+ */
 
-    /**
-     *  This action hook registers our PHP class as a WooCommerce payment gateway
-     */
-    function paywave_add_gateway_class( $gateways ) {
-        $gateways[] = 'PayWave_Gateway';
-        return $gateways;
-    }
-    add_filter( 'woocommerce_payment_gateways', 'paywave_add_gateway_class' );
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
 
-    /**
-     * Initialize PayWave Gateway
-     */
-    function paywave_init_gateway_class() {
-        class PayWave_Gateway extends WC_Payment_Gateway {
+/**
+ * This action hook registers our PHP class as a WooCommerce payment gateway
+ */
+function paywave_add_gateway_class($gateways) {
+    $gateways[] = 'PayWave_Gateway';
+    return $gateways;
+}
+add_filter('woocommerce_payment_gateways', 'paywave_add_gateway_class');
 
-            /**
-             * Class constructor, more about it in Step 3
-            */
-            public function __construct() {
-                $this->id = 'paywave_payment';
-                $this->icon = '';
-                $this->has_fields = false;
-                $this->method_title = 'PayWave';
-                $this->method_description = 'PayWave supports popular gateways like bKash, Nagad, Rocket, and more, enhancing the e-commerce experience.';
+/**
+ * Initialize PayWave Gateway
+ */
+function paywave_init_gateway_class() {
+    class PayWave_Gateway extends WC_Payment_Gateway {
 
-                // Load the settings
-                $this->init_form_fields();
-                $this->init_settings();
+        /**
+         * Class constructor
+         */
+        public function __construct() {
+            $this->id = 'paywave_payment';
+            $this->icon = ''; // URL of the icon
+            $this->has_fields = false;
+            $this->method_title = 'PayWave';
+            $this->method_description = 'PayWave supports popular gateways like bKash, Nagad, Rocket, and more, enhancing the e-commerce experience.';
 
-                // Save settings in admin
-                add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
+            // Load the settings
+            $this->init_form_fields();
+            $this->init_settings();
 
-                // Define user set variables
-                $this->title = $this->get_option('title');
-                $this->description = $this->get_option('description');
+            // Save settings in admin
+            add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
+
+            // Define user set variables
+            $this->title = $this->get_option('title');
+            $this->description = $this->get_option('description');
+
+
+        }
+
+        function create_custom_page_with_template() {
+            // Check if the page already exists
+            $page = get_page_by_title('My Custom Page', OBJECT, 'page');
+            if (!$page) {
+                // Create the page
+                $page_id = wp_insert_post(array(
+                    'post_title'  => 'Execute Payment',
+                    'post_content'=> 'This is the content of the page.',
+                    'post_status' => 'publish',
+                    'post_type'   => 'page',
+                    'page_template' => 'template/execute-payment.php'
+                ));
+            }
+        }
+
+        /**
+         * Plugin options
+         */
+        public function init_form_fields() {
+            $this->form_fields = array(
+                'enabled' => array(
+                    'title'   => 'Enable/Disable',
+                    'type'    => 'checkbox',
+                    'label'   => 'Enable PayWave Payment',
+                    'default' => 'yes'
+                ),
+                'title' => array(
+                    'title'       => 'Title',
+                    'type'        => 'text',
+                    'description' => 'This controls the title which the user sees during checkout.',
+                    'default'     => 'bKash',
+                    'desc_tip'    => true,
+                ),
+                'description' => array(
+                    'title'       => 'Description',
+                    'type'        => 'textarea',
+                    'description' => 'This controls the description which the user sees during checkout.',
+                    'default'     => 'Pay with your mobile wallet via bKash, Nagad, or Rocket.',
+                ),
+                'credential_type' => array(
+                    'title'   => 'Type',
+                    'type'    => 'select',
+                    'label'   => 'Enable for',
+                    'options' => array(
+                        'sandbox'   =>  __("SandBox", "paywave"),
+                        'live'      =>  __("Live", "paywave"),
+                    )
+                ),
+                'app_key' => array(
+                    'title'       => 'App Key',
+                    'type'        => 'text',
+                    'description' => 'Your bKash App Key.',
+                ),
+                'app_secret' => array(
+                    'title'       => 'App Secret',
+                    'type'        => 'password',
+                    'description' => 'Your bKash App Secret.',
+                ),
+                'username' => array(
+                    'title'       => 'Username',
+                    'type'        => 'text',
+                    'description' => 'Your bKash Username.',
+                ),
+                'password' => array(
+                    'title'       => 'Password',
+                    'type'        => 'password',
+                    'description' => 'Your bKash Password.',
+                ),
+            );
+        }
+
+        /**
+         * Process the payment and return the result
+         */
+        public function process_payment($order_id) {
+            $order = wc_get_order($order_id);
+
+            // Step 1: Authenticate and get a token
+            $token_response = $this->get_bkash_token();
+
+            if (!$token_response || isset($token_response->error)) {
+                wc_add_notice('Payment error: Failed to authenticate with bKash.', 'error');
+                return;
             }
 
-            /**
-             * Plugin options, we deal with it in Step 3 too
-            */
-            public function init_form_fields(){
-                $this->form_fields = array(
-                    'enabled' => array(
-                        'title'   => 'Enable/Disable',
-                        'type'    => 'checkbox',
-                        'label'   => 'Enable bKash Payment',
-                        'default' => 'yes'
-                    ),
-                    'title' => array(
-                        'title'       => 'Title',
-                        'type'        => 'text',
-                        'description' => 'This controls the title which the user sees during checkout.',
-                        'default'     => 'seamless gateway for bangladeshi MFS',
-                        'desc_tip'    => true,
-                    ),
-                    'description' => array(
-                        'title'       => 'Description',
-                        'type'        => 'textarea',
-                        'description' => 'This controls the description which the user sees during checkout.',
-                        'default'     => 'Pay with your credit card via My Custom Payment.',
-                    ),
-                    'credential_type' => array(
-                        'title'   => 'Type',
-                        'type'    => 'select',
-                        'label'   => 'Enable for',
-                        'options' => array(
-                            'sandbox'   =>  __("SandBox", "paywave"),
-                            'live'      =>  __("Live", "paywave"),
-                        )
-                    ),
+            $token = $token_response->id_token;
+
+            // Step 2: Create a payment request
+            $payment_response = $this->create_bkash_payment($order, $token);
+
+            if (!$payment_response || isset($payment_response->error)) {
+                wc_add_notice('Payment error: Failed to create payment.', 'error');
+                return;
+            }
+
+            $payment_id = $payment_response->paymentID;
+
+            // Step 3: Redirect to the bKash transaction page
+            if (isset($payment_response->bkashURL) && !empty($payment_response->bkashURL)) {
+                $order->update_status('pending', 'Awaiting bKash payment confirmation.');
+                return array(
+                    'result'   => 'success',
+                    'redirect' => $payment_response->bkashURL,
                 );
+            } else {
+                wc_add_notice('Payment error: bKash payment URL not received.', 'error');
+                return;
             }
+        }
 
-            /**
-             * You will need it if you want your custom credit card form, Step 4 is about it
-             */
-            public function payment_fields() {
+        /**
+         * Get bKash Token
+         */
+        private function get_bkash_token() {
+            $request_data = array(
+                'app_key' => $this->get_option('app_key'),
+                'app_secret' => $this->get_option('app_secret'),
+            );
 
-            }
+            $ch = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/token/grant");
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                "Content-Type: application/json",
+                "username: " . $this->get_option('username'),
+                "password: " . $this->get_option('password'),
+            ));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_data));
+            $response = curl_exec($ch);
+            curl_close($ch);
 
-            /*
-            * Custom CSS and JS, in most cases required only when you decided to go with a custom credit card form
-            */
-            public function payment_scripts() {
+            return json_decode($response);
+        }
 
-            }
+        /**
+         * Create bKash Payment
+         */
+        private function create_bkash_payment($order, $token) {
+            $request_data = array(
+                'mode' => '0011',
+                'payerReference' => '01770618576',
+                'callbackURL' => get_home_url("/callback"),
+                'merchantAssociationInfo' => 'MI05MID54RF09123456One',
+                'amount' => strval($order->get_total()),
+                'currency' => 'BDT',
+                'intent' => 'sale',
+                'merchantInvoiceNumber' => strval($order->get_order_number()),
+            );
 
-            /*
-            * Fields validation, more in Step 5
-            */
-            public function validate_fields() {
+            $ch = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/create");
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                "Content-Type: application/json",
+                "Authorization: Bearer $token",
+                "X-APP-Key: " . $this->get_option('app_key'),
+            ));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_data));
+            $response = curl_exec($ch);
+            curl_close($ch);
 
-            }
+            return json_decode($response);
+        }
 
-            // Simulate payment confirmation (replace with actual payment gateway code)
-            private function simulate_payment_confirmation($order_id) {
-                $request_data = array(
-                    'app_key' => '0vWQuCRGiUX7EPVjQDr0EUAYtc',
-                    'app_secret' => 'jcUNPBgbcqEDedNKdvE4G1cAK7D3hCjmJccNPZZBq96QIxxwAMEx'
-                );
+        /**
+         * Execute bKash Payment
+         */
+        private function execute_bkash_payment($order, $payment_id, $token) {
+            $ch = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/execute/$payment_id");
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                "Content-Type: application/json",
+                "Authorization: Bearer $token",
+                "X-APP-Key: " . $this->get_option('app_key'),
+            ));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $response = curl_exec($ch);
+            curl_close($ch);
 
-                $url = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/token/grant");
+            return $response;
+        }
 
-                $request_data_json = json_encode($request_data);
-
-                $header = array(
-                    "Content-Type: application/json",
-                    "username: 01770618567",
-                    "password: D7DaC<*E*eG"
-                );
-
-                curl_setopt($url, CURLOPT_HTTPHEADER, $header);
-                curl_setopt($url, CURLOPT_CUSTOMREQUEST, "POST");
-                curl_setopt($url, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($url, CURLOPT_POSTFIELDS, $request_data_json);
-                curl_setopt($url, CURLOPT_FOLLOWLOCATION, 1);
-                curl_setopt($url, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-
-                $response = curl_exec($url);
-
-                if (curl_errno($url)) {
-                    echo 'cURL error: ' . curl_error($url);
-                }
-
-                curl_close($url);
-            }
-
-            /*
-            * We're processing the payments here, everything about it is in Step 5
-            */
-            public function process_payment( $order_id ) {
-                $order = wc_get_order($order_id);
-
-                // Set order status to 'on-hold' until payment is confirmed
-                $order->update_status('on-hold', __('Awaiting payment confirmation', 'woocommerce'));
-
-                // For illustration: Simulate payment confirmation (replace with actual payment confirmation code)
-                $payment_confirmed = $this->simulate_payment_confirmation($order_id);
-
-                if ($payment_confirmed) {
-                    // Update order status to 'processing' or 'completed' upon successful payment
-                    $order->update_status('processing', __('Payment received, awaiting fulfillment', 'woocommerce'));
-
-                    // Return thank you page redirect
-                    return array(
-                        'result'   => 'success',
-                        'redirect' => $this->get_return_url($order),
-                    );
-                } else {
-                    // If payment fails or is not confirmed, keep order on hold and notify the user
-                    return array(
-                        'result'   => 'fail',
-                        'redirect' => wc_get_checkout_url(), // Redirect back to checkout with a failure notice
-                    );
-                }
-            }
-
-
-
-            /*
-            * In case you need a webhook, like PayPal IPN etc
-            */
-            public function webhook() {
-
-            }
-
-            /**
-             * create_gant_token
-             * create_payment
-             * execute_payment
-             * query
-             * query_payment
-             * refund
-             * search_payment
-             */
+        /**
+         * Webhook handler for bKash (Optional)
+         */
+        public function webhook() {
+            // Handle webhook events here (e.g., for payment status updates)
         }
     }
-    add_action( 'plugins_loaded', 'paywave_init_gateway_class' );
+}
+add_action('plugins_loaded', 'paywave_init_gateway_class');
