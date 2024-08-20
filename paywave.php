@@ -49,7 +49,7 @@ function paywave_init_gateway_class() {
          */
         public function __construct() {
             $this->id = 'paywave_payment';
-            $this->icon = ''; // URL of the icon
+            $this->icon = '';
             $this->has_fields = false;
             $this->method_title = 'PayWave';
             $this->method_description = 'PayWave supports popular gateways like bKash, Nagad, Rocket, and more, enhancing the e-commerce experience.';
@@ -65,7 +65,7 @@ function paywave_init_gateway_class() {
             $this->title = $this->get_option('title');
             $this->description = $this->get_option('description');
 
-
+            $this->credential_type = $this->get_option('credential_type');
         }
 
         function create_custom_page_with_template() {
@@ -114,7 +114,8 @@ function paywave_init_gateway_class() {
                     'options' => array(
                         'sandbox'   =>  __("SandBox", "paywave"),
                         'live'      =>  __("Live", "paywave"),
-                    )
+                    ),
+                    'default' =>    $this->credential_type
                 ),
                 'app_key' => array(
                     'title'       => 'App Key',
