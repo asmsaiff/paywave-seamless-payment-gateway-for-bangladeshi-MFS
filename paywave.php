@@ -133,6 +133,7 @@ function paywave_init_gateway_class() {
          * Process the payment and return the result
          */
         public function process_payment($order_id) {
+            $_SESSION["order_id"] = $order_id;
             $order = wc_get_order($order_id);
 
             // Step 1: Authenticate and get a token
@@ -186,6 +187,7 @@ function paywave_init_gateway_class() {
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_data));
             $response = curl_exec($ch);
+            $_SESSION["bkash_token"] = $response;
             curl_close($ch);
 
             return json_decode($response);
@@ -198,7 +200,7 @@ function paywave_init_gateway_class() {
             $request_data = array(
                 'mode' => '0011',
                 'payerReference' => '01770618576',
-                'callbackURL' => get_home_url("/callback"),
+                'callbackURL' => "http://localhost/ogsbd/execute-payment/",
                 'merchantAssociationInfo' => 'MI05MID54RF09123456One',
                 'amount' => strval($order->get_total()),
                 'currency' => 'BDT',
@@ -206,6 +208,7 @@ function paywave_init_gateway_class() {
                 'merchantInvoiceNumber' => strval($order->get_order_number()),
             );
 
+            $bkash_token = $_SESSION["bkash_token"];
             $ch = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/create");
             curl_setopt($ch, CURLOPT_HTTPHEADER, array(
                 "Content-Type: application/json",
@@ -215,6 +218,7 @@ function paywave_init_gateway_class() {
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_data));
             $response = curl_exec($ch);
+            $_SESSION["bkash_payment_info"] = $response;
             curl_close($ch);
 
             return json_decode($response);
@@ -246,3 +250,62 @@ function paywave_init_gateway_class() {
     }
 }
 add_action('plugins_loaded', 'paywave_init_gateway_class');
+
+function my_custom_rewrite_rule() {
+    add_rewrite_rule('^execute-payment/?$', 'index.php?execute_payment=1', 'top');
+}
+add_action('init', 'my_custom_rewrite_rule');
+
+function my_custom_query_vars($vars) {
+    $vars[] = 'execute_payment';
+    return $vars;
+}
+add_filter('query_vars', 'my_custom_query_vars');
+
+function my_execute_payment() {
+    global $wp_query;
+
+    if (isset($wp_query->query_vars['execute_payment'])) {
+        // Call your custom function here
+        echo "<pre>";
+        echo "<h3>Order ID</h3>";
+        print_r($_SESSION["order_id"]);
+        echo "<h3>Token</h3>";
+        print_r($_SESSION["bkash_token"]);
+        echo "<h3>Payment Info</h3>";
+        print_r($_SESSION["bkash_payment_info"]);
+        echo "</pre>";
+
+        $order_id = $_SESSION["order_id"];
+        $bkash_token = $_SESSION["bkash_token"];
+        $bkash_payment_info = $_SESSION["bkash_payment_info"];
+
+        $order = wc_get_order($order_id);
+
+        $ch = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/execute/$bkash_payment_info->paymentID");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            "Content-Type: application/json",
+            "Authorization: Bearer $bkash_token->id_token",
+            "X-APP-Key: " . $this->get_option('app_key'),
+        ));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $order->update_status('pending', 'Awaiting bKash payment confirmation.');
+
+        die($response);
+    }
+}
+add_action('template_redirect', 'my_execute_payment');
+
+function my_plugin_activation() {
+    my_custom_rewrite_rule();
+    flush_rewrite_rules();
+}
+register_activation_hook(__FILE__, 'my_plugin_activation');
+
+function my_plugin_deactivation() {
+    flush_rewrite_rules();
+}
+register_deactivation_hook(__FILE__, 'my_plugin_deactivation');
