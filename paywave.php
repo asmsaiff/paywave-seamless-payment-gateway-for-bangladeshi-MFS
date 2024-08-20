@@ -1,4 +1,5 @@
 <?php
+session_start();
 /**
  * Plugin Name:       PayWave
  * Plugin URI:        https://paywave.com
@@ -211,7 +212,7 @@ function paywave_init_gateway_class() {
             $request_data = array(
                 'mode' => '0011',
                 'payerReference' => '01770618576',
-                'callbackURL' => "http://localhost/ogsbd/execute-payment/",
+                'callbackURL' => "http://localhost/dev/execute-payment/",
                 'merchantAssociationInfo' => 'MI05MID54RF09123456One',
                 'amount' => strval($order->get_total()),
                 'currency' => 'BDT',
