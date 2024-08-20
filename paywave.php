@@ -19,6 +19,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+function my_plugin_activation() {
+    my_custom_rewrite_rule();
+    flush_rewrite_rules();
+}
+register_activation_hook(__FILE__, 'my_plugin_activation');
+
+function my_plugin_deactivation() {
+    flush_rewrite_rules();
+}
+register_deactivation_hook(__FILE__, 'my_plugin_deactivation');
+
 /**
  * This action hook registers our PHP class as a WooCommerce payment gateway
  */
@@ -33,7 +44,6 @@ add_filter('woocommerce_payment_gateways', 'paywave_add_gateway_class');
  */
 function paywave_init_gateway_class() {
     class PayWave_Gateway extends WC_Payment_Gateway {
-
         /**
          * Class constructor
          */
@@ -266,16 +276,6 @@ function my_execute_payment() {
     global $wp_query;
 
     if (isset($wp_query->query_vars['execute_payment'])) {
-        // Call your custom function here
-        echo "<pre>";
-        echo "<h3>Order ID</h3>";
-        print_r($_SESSION["order_id"]);
-        echo "<h3>Token</h3>";
-        print_r($_SESSION["bkash_token"]);
-        echo "<h3>Payment Info</h3>";
-        print_r($_SESSION["bkash_payment_info"]);
-        echo "</pre>";
-
         $order_id = $_SESSION["order_id"];
         $bkash_token = json_decode($_SESSION["bkash_token"]);
         $bkash_payment_info = $_SESSION["bkash_payment_info"];
@@ -296,7 +296,7 @@ function my_execute_payment() {
         curl_setopt($url, CURLOPT_HTTPHEADER, $header);
         curl_setopt($url, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($url, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($url, CURLOPT_POSTFIELDS, $posttoken);
+        curl_setopt($url, CURLOPT_POSTFIELDS, json_encode($posttoken));
         curl_setopt($url, CURLOPT_FOLLOWLOCATION, 1);
         curl_setopt($url, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         $resultdata = curl_exec($url);
@@ -306,72 +306,13 @@ function my_execute_payment() {
         curl_close($url);
 
 
-        // try {
-        //     // Execute Payment
-        //     $paymentID = $request->paymentID;
-        //     $auth = json_decode(Session::get('bkash_token'))->id_token;
-        //     $post_token = array(
-        //         'paymentID' => $paymentID
-        //     );
-        //     $url = curl_init($base_URL.'/execute');
-        //     $posttoken = json_encode($post_token);
-        //     $header = array(
-        //         'Content-Type:application/json',
-        //         'Authorization:' . $auth,
-        //         'X-APP-Key:'.trim($bkashAcc->app_key)
-        //     );
-        //     curl_setopt($url, CURLOPT_HTTPHEADER, $header);
-        //     curl_setopt($url, CURLOPT_CUSTOMREQUEST, "POST");
-        //     curl_setopt($url, CURLOPT_RETURNTRANSFER, true);
-        //     curl_setopt($url, CURLOPT_POSTFIELDS, $posttoken);
-        //     curl_setopt($url, CURLOPT_FOLLOWLOCATION, 1);
-        //     curl_setopt($url, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        //     $resultdata = curl_exec($url);
-        //     curl_close($url);
-        //     $obj = json_decode($resultdata);
+        $order->update_status('completed', 'Order completed.');
 
-
-        //     // Set Deposit details
-        //     if(isset($obj->transactionStatus) && $obj->transactionStatus == "Completed" && isset($obj->trxID)){
-        //         echo "<pre>";
-        //         print_r($obj);
-        //         echo "</pre>";
-        //     }
-        //     else{
-        //         echo "Error after obj print";
-        //     }
-        // } catch (\Exception $e) {
-        //     echo "<pre>";
-        //     echo "<h3>Execute Exception</h3>";
-        //     print_r($e->getMessage());
-        //     echo "</pre>";
-        // }
-
-
-
-
-
-        // $order->update_status('completed', 'Awaiting bKash payment confirmation.');
-
-        // echo "<pre>";
-        // echo "<h3>Executed Response</h3>";
-        // print_r(json_decode($response));
-        // echo "</pre>";
-
+        wp_safe_redirect(get_home_url() . "/checkout/order-received/" . $order_id . "/?key=" . $order->get_meta('_order_key'));
         unset($_SESSION["order_id"]);
         unset($_SESSION["bkash_token"]);
         unset($_SESSION["bkash_payment_info"]);
+        exit;
     }
 }
 add_action('template_redirect', 'my_execute_payment');
-
-function my_plugin_activation() {
-    my_custom_rewrite_rule();
-    flush_rewrite_rules();
-}
-register_activation_hook(__FILE__, 'my_plugin_activation');
-
-function my_plugin_deactivation() {
-    flush_rewrite_rules();
-}
-register_deactivation_hook(__FILE__, 'my_plugin_deactivation');
