@@ -277,24 +277,90 @@ function my_execute_payment() {
         echo "</pre>";
 
         $order_id = $_SESSION["order_id"];
-        $bkash_token = $_SESSION["bkash_token"];
+        $bkash_token = json_decode($_SESSION["bkash_token"]);
         $bkash_payment_info = $_SESSION["bkash_payment_info"];
 
         $order = wc_get_order($order_id);
 
-        $ch = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/execute/$bkash_payment_info->paymentID");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        $url = curl_init("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/execute");
+        $header = array(
             "Content-Type: application/json",
             "Authorization: Bearer $bkash_token->id_token",
-            "X-APP-Key: " . $this->get_option('app_key'),
-        ));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
+            "X-APP-Key: 0vWQuCRGiUX7EPVjQDr0EUAYtc",
+        );
 
-        $order->update_status('pending', 'Awaiting bKash payment confirmation.');
+        $posttoken = array(
+            'paymentID' => $_GET["paymentID"]
+        );
 
-        die($response);
+        curl_setopt($url, CURLOPT_HTTPHEADER, $header);
+        curl_setopt($url, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($url, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($url, CURLOPT_POSTFIELDS, $posttoken);
+        curl_setopt($url, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($url, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        $resultdata = curl_exec($url);
+
+        curl_close($url);
+        $response = curl_exec($url);
+        curl_close($url);
+
+
+        // try {
+        //     // Execute Payment
+        //     $paymentID = $request->paymentID;
+        //     $auth = json_decode(Session::get('bkash_token'))->id_token;
+        //     $post_token = array(
+        //         'paymentID' => $paymentID
+        //     );
+        //     $url = curl_init($base_URL.'/execute');
+        //     $posttoken = json_encode($post_token);
+        //     $header = array(
+        //         'Content-Type:application/json',
+        //         'Authorization:' . $auth,
+        //         'X-APP-Key:'.trim($bkashAcc->app_key)
+        //     );
+        //     curl_setopt($url, CURLOPT_HTTPHEADER, $header);
+        //     curl_setopt($url, CURLOPT_CUSTOMREQUEST, "POST");
+        //     curl_setopt($url, CURLOPT_RETURNTRANSFER, true);
+        //     curl_setopt($url, CURLOPT_POSTFIELDS, $posttoken);
+        //     curl_setopt($url, CURLOPT_FOLLOWLOCATION, 1);
+        //     curl_setopt($url, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        //     $resultdata = curl_exec($url);
+        //     curl_close($url);
+        //     $obj = json_decode($resultdata);
+
+
+        //     // Set Deposit details
+        //     if(isset($obj->transactionStatus) && $obj->transactionStatus == "Completed" && isset($obj->trxID)){
+        //         echo "<pre>";
+        //         print_r($obj);
+        //         echo "</pre>";
+        //     }
+        //     else{
+        //         echo "Error after obj print";
+        //     }
+        // } catch (\Exception $e) {
+        //     echo "<pre>";
+        //     echo "<h3>Execute Exception</h3>";
+        //     print_r($e->getMessage());
+        //     echo "</pre>";
+        // }
+
+
+
+
+
+        // $order->update_status('completed', 'Awaiting bKash payment confirmation.');
+
+        // echo "<pre>";
+        // echo "<h3>Executed Response</h3>";
+        // print_r(json_decode($response));
+        // echo "</pre>";
+
+        unset($_SESSION["order_id"]);
+        unset($_SESSION["bkash_token"]);
+        unset($_SESSION["bkash_payment_info"]);
     }
 }
 add_action('template_redirect', 'my_execute_payment');
