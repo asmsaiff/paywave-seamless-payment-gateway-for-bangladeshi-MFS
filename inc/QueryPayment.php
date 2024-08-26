@@ -59,7 +59,7 @@
             // Decode the response from bKash API
             $obj = json_decode($resultdatax);
 
-            if (!empty($obj)) {
+            if (!empty($obj) && "0000" === $obj->statusCode && "Completed" === $obj->transactionStatus && "Complete" === $obj->verificationStatus) {
                 // Insert data into the transactions table
                 $wpdb->insert(
                     $table_name,
@@ -88,7 +88,7 @@
             }
 
             unset($_SESSION['bkash_token'], $_SESSION['bkash_payment_info']);
-            // Return the decoded object (optional)
+
             return $obj;
         }
     }

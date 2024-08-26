@@ -37,7 +37,7 @@
                 $response = json_decode(curl_exec($url));
                 curl_close($url);
 
-                if("2062" == $response->statusCode) {
+                if("2062" === $response->statusCode) {
                     $order->update_status('processing', 'Order is now processing');
                     $order->save();
                 } else {
@@ -45,12 +45,20 @@
                     $order->save();
                 }
 
+                echo "<img src='https://i.gifer.com/ZKZg.gif' />";
+                sleep(5);
+
                 // Save transaction to database
                 $query = new QueryPayment();
-                $query->save_transaction($bkash_payment_info->paymentID, $bkash_token, $x_app_key, $base_url);
+                $payment_data = $query->save_transaction($bkash_payment_info->paymentID, $bkash_token, $x_app_key, $base_url);
 
-                wp_safe_redirect(get_home_url() . "/checkout/order-received/" . $order_id . "/?key=" . $order->get_meta('_order_key'));
-                // exit;
+                if("Completed" === $payment_data->transactionStatus && "0000" === $payment_data->statusCode && "Completed" === $payment_data->transactionStatus && "Complete" === $payment_data->verificationStatus) {
+                    wp_safe_redirect(get_home_url() . "/checkout/order-received/" . $order_id . "/?key=" . $order->get_meta('_order_key'));
+                    exit;
+                } else {
+                    wp_safe_redirect(get_home_url() . "/payment-failed/");
+                    exit;
+                }
             }
         }
     }
