@@ -1,35 +1,56 @@
 <?php
-namespace PayWave;
+    namespace PayWave;
 
-class ExecutePayment {
-    public static function onboard() {
-        if (get_query_var('execute_payment')) {
-            $order_id = $_SESSION["order_id"];
-            $bkash_token = json_decode($_SESSION["bkash_token"]);
-            $order = wc_get_order($order_id);
+    class ExecutePayment {
+        public static function handle_payment_execution() {
+            global $wp_query;
 
-            $base_url = $_SESSION["base_url"];
+            if (isset($wp_query->query_vars['execute_payment'])) {
+                $order_id = $_GET['order_id'];
+                $x_app_key = $_GET['app_key'];
+                $base_url = $_GET['base_url'];
 
-            // Execute the payment
-            $ch = curl_init($base_url . "/tokenized/checkout/execute");
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "Content-Type: application/json",
-                "Authorization: Bearer $bkash_token->id_token",
-            ]);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-                'paymentID' => $_GET['paymentID']
-            ]));
-            $response = curl_exec($ch);
-            curl_close($ch);
+                $order = wc_get_order($order_id);
+                $bkash_token = json_decode($_SESSION['bkash_token']);
+                $bkash_payment_info = json_decode($_SESSION['bkash_payment_info']);
 
-            // Update order status
-            $order->update_status('completed', 'Order completed.');
-            wp_safe_redirect(get_home_url() . "/checkout/order-received/{$order_id}/?key=" . $order->get_order_key());
+                $url = curl_init($base_url . "/tokenized/checkout/execute");
+                $header = array(
+                    "Content-Type: application/json",
+                    "Authorization: Bearer $bkash_token->id_token",
+                    "X-APP-Key: $x_app_key",
+                );
 
-            // Clean up session data
-            unset($_SESSION["order_id"], $_SESSION["bkash_token"]);
-            exit;
+                $posttoken = array(
+                    'paymentID' => $bkash_payment_info->paymentID
+                );
+
+                curl_setopt($url, CURLOPT_HTTPHEADER, $header);
+                curl_setopt($url, CURLOPT_CUSTOMREQUEST, "POST");
+                curl_setopt($url, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($url, CURLOPT_POSTFIELDS, json_encode($posttoken));
+                curl_setopt($url, CURLOPT_FOLLOWLOCATION, 1);
+                curl_setopt($url, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+                $resultdata = curl_exec($url);
+
+                curl_close($url);
+                $response = json_decode(curl_exec($url));
+                curl_close($url);
+
+                if("2062" == $response->statusCode) {
+                    $order->update_status('processing', 'Order is now processing');
+                    $order->save();
+                } else {
+                    $order->update_status('pending', 'Awaiting bKash payment confirmation.');
+                    $order->save();
+                }
+
+                // Save transaction to database
+                $query = new QueryPayment();
+                $query->save_transaction($bkash_payment_info->paymentID, $bkash_token, $x_app_key, $base_url);
+
+                wp_safe_redirect(get_home_url() . "/checkout/order-received/" . $order_id . "/?key=" . $order->get_meta('_order_key'));
+                // exit;
+            }
         }
     }
-}
-add_action('template_redirect', ['PayWave\\ExecutePayment', 'onboard']);
