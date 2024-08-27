@@ -3,7 +3,7 @@
     /**
      * Plugin Name:       PayWave
      * Plugin URI:        https://paywave.net
-     * Description:       PayWave is a versatile plugin designed to integrate all Bangladeshi payment gateways seamlessly.
+     * Description:       PayWave is a versatile plugin designed to integrate bKash seamlessly.
      * Version:           1.0
      * Author:            S. Saif
      * License:           GPL v2 or later
@@ -31,13 +31,6 @@
             require $file;
         }
     });
-
-    // Now you can use the custom class
-    // use PayWave\QueryPayment;
-
-    // Create an instance of CustomClass
-    // $custom_class_instance = new QueryPayment();
-    // $custom_class_instance->save_transaction();
 
     // Activation and deactivation hooks
     function paywave_plugin_activation() {
