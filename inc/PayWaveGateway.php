@@ -75,16 +75,6 @@
                     ),
                     'default' =>    $this->credential_type
                 ),
-                'paywave_app_key' => array(
-                    'title'       => 'App Key',
-                    'type'        => 'text',
-                    'description' => 'Your bKash App Key.',
-                ),
-                'paywave_app_secret' => array(
-                    'title'       => 'App Secret',
-                    'type'        => 'password',
-                    'description' => 'Your bKash App Secret.',
-                ),
                 'paywave_bkash_username' => array(
                     'title'       => 'Username',
                     'type'        => 'text',
@@ -94,6 +84,16 @@
                     'title'       => 'Password',
                     'type'        => 'password',
                     'description' => 'Your bKash Password.',
+                ),
+                'paywave_app_key' => array(
+                    'title'       => 'App Key',
+                    'type'        => 'text',
+                    'description' => 'Your bKash App Key.',
+                ),
+                'paywave_app_secret' => array(
+                    'title'       => 'App Secret',
+                    'type'        => 'password',
+                    'description' => 'Your bKash App Secret.',
                 ),
             );
         }
@@ -136,7 +136,7 @@
             $payment_id = $payment_response->paymentID;
 
             // Step 3: Redirect to the bKash transaction page
-            if (isset($payment_response->bkashURL) && !empty($payment_response->bkashURL)) {
+            if ($payment_response->bkashURL) {
                 $order->update_status('pending', 'Awaiting bKash payment confirmation.');
                 return array(
                     'result'   => 'success',
