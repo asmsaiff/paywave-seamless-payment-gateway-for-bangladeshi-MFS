@@ -9,6 +9,18 @@
                 $order_id = $_GET['order_id'];
                 $x_app_key = $_GET['app_key'];
                 $base_url = $_GET['base_url'];
+                $status = $_GET['status'];
+                $order = wc_get_order($order_id);
+
+                if('failure' == $status) {
+                    wp_safe_redirect(get_home_url() . "/checkout/order-pay/" . $order_id . "/?pay_for_order=true&key=" . $order->get_meta('_order_key'));
+                    wc_add_notice('Payment failed.', 'error');
+                    return;
+                } elseif ('cancel' == $status) {
+                    wp_safe_redirect(get_home_url() . "/checkout/order-pay/" . $order_id . "/?pay_for_order=true&key=" . $order->get_meta('_order_key'));
+                    wc_add_notice('Payment cancelled', 'error');
+                    return;
+                }
 
                 $order = wc_get_order($order_id);
                 $bkash_token = json_decode($_SESSION['bkash_token']);
@@ -45,7 +57,6 @@
                     $order->save();
                 }
 
-                echo "<img src='https://i.gifer.com/ZKZg.gif' />";
                 sleep(5);
 
                 // Save transaction to database
