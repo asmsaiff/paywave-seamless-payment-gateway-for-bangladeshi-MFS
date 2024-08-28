@@ -14,6 +14,7 @@
         public $credential_type;
         public $base_url;
         public $order_id;
+        public $sandbox_wallet;
         public $paywave_bkash_app_key;
         public $paywave_bkash_app_secret;
         public $paywave_bkash_username;
@@ -34,6 +35,7 @@
             $this->credential_type = $this->get_option('paywave_credential_type');
 
             // bKash Credentials
+            $this->sandbox_wallet = $this->get_option('paywave_bkash_sandbox_wallet_number');
             $this->paywave_bkash_app_key = $this->get_option('paywave_app_key');
             $this->paywave_bkash_app_secret = $this->get_option('paywave_app_secret');
             $this->paywave_bkash_username = $this->get_option('paywave_bkash_username');
@@ -75,6 +77,11 @@
                     ),
                     'default' =>    $this->credential_type
                 ),
+                'paywave_bkash_sandbox_wallet_number' => array(
+                    'title'       => 'Sandbox Wallet',
+                    'type'        => 'text',
+                    'description' => 'Your bKash sandbox wallet. Leave it blank if you have input live credentials',
+                ),
                 'paywave_bkash_username' => array(
                     'title'       => 'Username',
                     'type'        => 'text',
@@ -107,7 +114,7 @@
          */
         public function process_payment($order_id) {
             // Credential validation before payment
-            if (!$this->paywave_bkash_app_key && !$this->paywave_app_secret && !$this->paywave_bkash_username && !$this->paywave_bkash_password) {
+            if (!$this->sandbox_wallet && !$this->paywave_bkash_app_key && !$this->paywave_app_secret && !$this->paywave_bkash_username && !$this->paywave_bkash_password) {
                 wc_add_notice('Payment error : Failed to authenticate with bKash. Please check your credentials and try again.', 'error');
                 return;
             }
@@ -178,7 +185,7 @@
         private function create_bkash_payment($order, $token, $order_id, $paywave_bkash_app_key, $base_url) {
             $request_data = array(
                 'mode' => '0011',
-                'payerReference' => '01770618576',
+                'payerReference' => $this->credential_type == "live" ? bloginfo('title') : $this->sandbox_wallet,
                 'callbackURL' => get_home_url() . "/execute-payment?order_id=" . $order_id . "&app_key=" . $paywave_bkash_app_key . "&base_url=" . $base_url,
                 'merchantAssociationInfo' => 'MI05MID54RF09123456One',
                 'amount' => strval($order->get_total()),

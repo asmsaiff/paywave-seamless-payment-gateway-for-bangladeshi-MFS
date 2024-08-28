@@ -1,7 +1,7 @@
 === PayWave ===
 Contributors: saifullahsiddique,rakibuzzman
 Donate link: https://saif.im
-Tags: bkash,rocket,nagad,bangladeshi payment gateway, payment, bkash gateway
+Tags: bkash,rocket,nagad,bangladeshi payment gateway, bkash gateway
 Requires at least: 6.6
 Tested up to: 6.6.1
 Stable tag: 1.0
